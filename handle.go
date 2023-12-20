@@ -19,7 +19,9 @@ func (eh *Handler) driver() Handler {
 	}
 	if eh.option.HandleError {
 		eh.errorHandle = func(ctx context.Context, msg string, err error) error {
-			eh.logger.WithGroup("driver").LogAttrs(ctx, eh.option.ErrorLevel.Level(), msg, slog.Any("error", err))
+			if err != nil {
+				eh.logger.WithGroup("driver").LogAttrs(ctx, eh.option.ErrorLevel.Level(), msg, slog.Any("error", err))
+			}
 			return err
 		}
 	}
@@ -32,7 +34,9 @@ func (eh *Handler) tx() Handler {
 	}
 	if eh.option.HandleError {
 		eh.errorHandle = func(ctx context.Context, msg string, err error) error {
-			eh.logger.WithGroup("Tx").LogAttrs(ctx, eh.option.ErrorLevel.Level(), msg, slog.Any("error", err))
+			if err != nil {
+				eh.logger.WithGroup("Tx").LogAttrs(ctx, eh.option.ErrorLevel.Level(), msg, slog.Any("error", err))
+			}
 			return err
 		}
 	}
