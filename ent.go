@@ -19,7 +19,9 @@ type SlogDriver struct {
 // a new slog-init that prints all outgoing operations.
 func New(logger *slog.Logger, opts ...func(*Option) *Option) func(dialect.Driver) dialect.Driver {
 	op := settings(opts...)
-
+	if logger == nil {
+		logger = slog.Default()
+	}
 	handle := op.handle(logger)
 	return func(dri dialect.Driver) dialect.Driver {
 		return &SlogDriver{Driver: dri, Handler: handle.initWith(slog.String("database", "driver"))}
