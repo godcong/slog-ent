@@ -10,11 +10,12 @@ import (
 
 // Option defines configuration options for the logging handler.
 type Option struct {
-	defaultLevel slog.Leveler                     // DefaultLevel specifies the default log level for messages.
-	errorLevel   slog.Leveler                     // ErrorLevel specifies the log level for error messages.
-	handleError  bool                             // HandleError determines whether errors encountered during logging are handled.
-	filterAttrs  []string                         // FilterAttrs specifies a list of attributes to filter out from the logs.
-	generateID   func(ctx context.Context) string // GenerateID is a function to generate unique IDs for log entries.
+	defaultLevel slog.Leveler // DefaultLevel specifies the default log level for messages.
+	errorLevel   slog.Leveler // ErrorLevel specifies the log level for error messages.
+	handleError  bool         // HandleError determines whether errors encountered during logging are handled.
+	filter       func(context.Context,
+		...slog.Attr) []slog.Attr // Filters specifies the set of attributes to filter out from logged messages.
+	generateID func(ctx context.Context) string // GenerateID is a function to generate unique IDs for log entries.
 }
 
 // DefaultOption provides the default configuration options for the logging handler.
@@ -22,8 +23,11 @@ var DefaultOption = Option{
 	defaultLevel: slog.LevelInfo,  // Defaults to Info level.
 	errorLevel:   slog.LevelError, // Defaults to Error level.
 	handleError:  true,            // Defaults to handling errors.
-	filterAttrs:  []string{},      // Defaults to no filtering.
-	generateID:   generateID,      // Uses the package-level generateID function to generate log entry IDs by default.
+	filter: func(ctx context.Context,
+		attrs ...slog.Attr) []slog.Attr {
+		return attrs
+	}, // Defaults to no filtering.
+	generateID: generateID, // Uses the package-level generateID function to generate log entry IDs by default.
 }
 
 func settings(opts ...func(*Option) *Option) *Option {
@@ -74,15 +78,15 @@ func WithHandleError(handleError bool) func(*Option) *Option {
 	}
 }
 
-// WithFilterAttrs specifies a list of attribute names to filter out from logged messages for the given logging options.
+// WithFilter specifies a list of attribute names to filter out from logged messages for the given logging options.
 //
 // - `attrs`: A variadic list of strings representing attribute names to be filtered.
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the list of filtered attributes,
 // and returns the updated `*Option` pointer.
-func WithFilterAttrs(attrs ...string) func(*Option) *Option {
+func WithFilter(filter func(context.Context, ...slog.Attr) []slog.Attr) func(*Option) *Option {
 	return func(option *Option) *Option {
-		option.filterAttrs = attrs
+		option.filter = filter
 		return option
 	}
 }
@@ -109,26 +113,6 @@ func generateID(ctx context.Context) string {
 // handle configures and returns a new logging handler based on the provided options.
 func (o Option) handle(logger *slog.Logger) *Handler {
 	// Define a filter function to modify log attributes based on the FilterAttrs option.
-	filterHandle := func(attrs ...slog.Attr) []slog.Attr {
-		return attrs
-	}
-	filters := make(map[string]struct{})
-	if len(o.filterAttrs) > 0 {
-		for _, keyword := range o.filterAttrs {
-			filters[keyword] = struct{}{}
-		}
-		filterHandle = func(attrs ...slog.Attr) []slog.Attr {
-			// Removes attributes matching keywords specified in FilterAttrs.
-			var newAttrs []slog.Attr
-			for _, attr := range attrs {
-				if _, ok := filters[attr.Key]; ok {
-					continue // Skip attributes matching filtered keywords.
-				}
-				newAttrs = append(newAttrs, attr)
-			}
-			return newAttrs
-		}
-	}
 
 	// Return a configured logging handler.
 	return &Handler{
@@ -137,8 +121,8 @@ func (o Option) handle(logger *slog.Logger) *Handler {
 		error: func(ctx context.Context, msg string, err error) error {
 			return err
 		},
-		filters:      filters,
-		filterHandle: filterHandle,
-		option:       o,
+		// filters:      filters,
+		// filterHandle: filterHandle,
+		option: o,
 	}
 }
