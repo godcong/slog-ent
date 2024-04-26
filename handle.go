@@ -21,7 +21,7 @@ func (eh *Handler) initWith(attrs ...slog.Attr) Handler {
 	ehCopy.log = func(ctx context.Context, msg string, attrs ...slog.Attr) {
 		attrs = eh.filterHandle(attrs...)
 		attrs = append(ehCopy.attrs, attrs...)
-		ehCopy.logger.With(ehCopy.attrs).LogAttrs(ctx,
+		ehCopy.logger.LogAttrs(ctx,
 			eh.option.defaultLevel.Level(), msg,
 			attrs...)
 	}
