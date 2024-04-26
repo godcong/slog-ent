@@ -8,37 +8,40 @@ import (
 type Handler struct {
 	logger       *slog.Logger
 	log          func(ctx context.Context, msg string, attrs ...slog.Attr)
-	errorHandle  func(ctx context.Context, msg string, err error) error
+	error        func(ctx context.Context, msg string, err error) error
+	filters      map[string]struct{}
 	filterHandle func(attrs ...slog.Attr) []slog.Attr
 	option       Option
+	attrs        []slog.Attr
 }
 
-func (eh *Handler) driver() Handler {
-	eh.log = func(ctx context.Context, msg string, attrs ...slog.Attr) {
-		eh.logger.WithGroup("driver").LogAttrs(ctx, eh.option.DefaultLevel.Level(), msg, eh.filterHandle(attrs...)...)
+func (eh *Handler) initWith(attrs ...slog.Attr) Handler {
+	ehCopy := *eh
+	ehCopy.attrs = attrs
+	ehCopy.log = func(ctx context.Context, msg string, attrs ...slog.Attr) {
+		attrs = eh.filterHandle(attrs...)
+		attrs = append(ehCopy.attrs, attrs...)
+		ehCopy.logger.With(ehCopy.attrs).LogAttrs(ctx,
+			eh.option.defaultLevel.Level(), msg,
+			attrs...)
 	}
-	if eh.option.HandleError {
-		eh.errorHandle = func(ctx context.Context, msg string, err error) error {
+	if ehCopy.option.handleError {
+		ehCopy.error = func(ctx context.Context, msg string, err error) error {
 			if err != nil {
-				eh.logger.WithGroup("driver").LogAttrs(ctx, eh.option.ErrorLevel.Level(), msg, slog.Any("error", err))
+				attrs = append(ehCopy.attrs, slog.Any("error", err))
+				ehCopy.logger.LogAttrs(ctx,
+					eh.option.errorLevel.Level(), msg,
+					attrs...,
+				)
 			}
 			return err
 		}
 	}
-	return *eh
+	return ehCopy
 }
 
-func (eh *Handler) tx() Handler {
-	eh.log = func(ctx context.Context, msg string, attrs ...slog.Attr) {
-		eh.logger.WithGroup("Tx").LogAttrs(ctx, eh.option.DefaultLevel.Level(), msg, eh.filterHandle(attrs...)...)
-	}
-	if eh.option.HandleError {
-		eh.errorHandle = func(ctx context.Context, msg string, err error) error {
-			if err != nil {
-				eh.logger.WithGroup("Tx").LogAttrs(ctx, eh.option.ErrorLevel.Level(), msg, slog.Any("error", err))
-			}
-			return err
-		}
-	}
-	return *eh
+func (eh *Handler) with(attrs ...slog.Attr) Handler {
+	ehCopy := *eh
+	ehCopy.attrs = attrs
+	return ehCopy
 }
