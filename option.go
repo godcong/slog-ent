@@ -1,4 +1,6 @@
-// Package entslog provides logging capabilities initWith ent entities.
+// Copyright (c) 2024 OrigAdmin. All rights reserved.
+
+// Package entslog for entgo.io/ent
 package entslog
 
 import (
@@ -8,28 +10,42 @@ import (
 	"github.com/google/uuid"
 )
 
-// Option defines configuration options for the logging handler.
-type Option struct {
-	defaultLevel slog.Leveler // DefaultLevel specifies the default log level for messages.
-	errorLevel   slog.Leveler // ErrorLevel specifies the log level for error messages.
-	handleError  bool         // HandleError determines whether errors encountered during logging are handled.
-	filter       func(context.Context,
-		...slog.Attr) []slog.Attr // Filters specifies the set of attributes to filter out from logged messages.
-	generateID func(ctx context.Context) string // GenerateID is a function to generate unique IDs for log entries.
-}
+type (
+	// TraceFunc generates a unique identifier for a log entry to string.
+	TraceFunc func(context.Context) string
+	// FilterAttrs defines a function to filter out attributes from log entries.
+	FilterAttrs func(context.Context, ...slog.Attr) []slog.Attr
+	// Option defines configuration options for the logging handler.
+	Option struct {
+		handleError bool         // HandleError determines whether errors encountered during logging are handled.
+		logger      *slog.Logger // Logger specifies the logger to be used for logging.
+		level       slog.Leveler // DefaultLevel specifies the default log level for messages.
+		errorLevel  slog.Leveler // ErrorLevel specifies the log level for error messages.
+		trace       TraceFunc    // GenerateID is a function to generate unique IDs for log entries.
+		filter      FilterAttrs  // Filters specifies the set of attributes to filter out from logged messages.
+	}
+)
 
 // DefaultOption provides the default configuration options for the logging handler.
 var DefaultOption = Option{
-	defaultLevel: slog.LevelInfo,  // Defaults to Info level.
-	errorLevel:   slog.LevelError, // Defaults to Error level.
-	handleError:  true,            // Defaults to handling errors.
-	filter: func(ctx context.Context,
-		attrs ...slog.Attr) []slog.Attr {
-		return attrs
-	}, // Defaults to no filtering.
-	generateID: generateID, // Uses the package-level generateID function to generate log entry IDs by default.
+	logger:      slog.Default(),  // Defaults to the default logger.
+	level:       slog.LevelInfo,  // Defaults to Info level.
+	errorLevel:  slog.LevelError, // Defaults to Error level.
+	handleError: true,            // Defaults to handling errors.
+	filter:      noFilter,        // Defaults to no filtering.
+	trace:       traceUUID,       // Uses the package-level trace function to generate log entry IDs by default.
 }
 
+func noFilter(_ context.Context, attrs ...slog.Attr) []slog.Attr {
+	return attrs
+}
+
+// traceUUID generates a unique identifier for a log entry using UUIDs.
+func traceUUID(ctx context.Context) string {
+	return uuid.Must(uuid.NewRandom()).String()
+}
+
+// settings applies the given options to the default logging options and returns the resulting configuration.
 func settings(opts ...func(*Option) *Option) *Option {
 	option := DefaultOption
 	for _, opt := range opts {
@@ -46,7 +62,7 @@ func settings(opts ...func(*Option) *Option) *Option {
 // and returns the updated `*Option` pointer.
 func WithDefaultLevel(level slog.Leveler) func(*Option) *Option {
 	return func(option *Option) *Option {
-		option.defaultLevel = level
+		option.level = level
 		return option
 	}
 }
@@ -65,15 +81,15 @@ func WithErrorLevel(level slog.Leveler) func(*Option) *Option {
 	}
 }
 
-// WithHandleError explicitly enables or disables error handling for the given logging options.
+// WithError explicitly enables or disables error handling for the given logging options.
 //
 // - `handleError`: A boolean indicating whether to enable (true) or disable (false) error handling.
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the error handling flag,
 // and returns the updated `*Option` pointer.
-func WithHandleError(handleError bool) func(*Option) *Option {
+func WithError() func(*Option) *Option {
 	return func(option *Option) *Option {
-		option.handleError = handleError
+		option.handleError = true
 		return option
 	}
 }
@@ -91,38 +107,47 @@ func WithFilter(filter func(context.Context, ...slog.Attr) []slog.Attr) func(*Op
 	}
 }
 
-// WithGenerateID assigns a custom ID generation function for the given logging options.
+// WithTrace assigns a custom ID generation function for the given logging options.
 // This function will be used to generate unique IDs for log entries within a given context.
 //
-// - `generateID`: A function that accepts a `context.Context` and returns a string representing the generated ID.
+// - `trace`: A function that accepts a `context.Context` and returns a string representing the generated ID.
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the custom ID generation function,
 // and returns the updated `*Option` pointer.
-func WithGenerateID(generateID func(context.Context) string) func(*Option) *Option {
+func WithTrace(trace func(context.Context) string) func(*Option) *Option {
 	return func(option *Option) *Option {
-		option.generateID = generateID
+		option.trace = trace
 		return option
 	}
 }
 
-// generateID generates a unique identifier for a log entry using UUIDs.
-func generateID(ctx context.Context) string {
-	return uuid.New().String()
+// WithLogger specifies the logger to be used for logging.
+// If not specified, the default logger will be used.
+//
+// - `logger`: The logger to be used for logging.
+//
+// Returns a function that accepts an `*Option` parameter, modifies it by setting the logger,
+// and returns the updated `*Option` pointer.
+func WithLogger(logger *slog.Logger) func(*Option) *Option {
+	return func(option *Option) *Option {
+		option.logger = logger
+		return option
+	}
 }
 
-// handle configures and returns a new logging handler based on the provided options.
-func (o Option) handle(logger *slog.Logger) *Handler {
+// make configures and returns a new logging handler based on the provided options.
+func (o *Option) make() *Handler {
 	// Define a filter function to modify log attributes based on the FilterAttrs option.
+	if o.logger == nil {
+		o.logger = slog.Default()
+	}
+
+	handle := Handler{
+		filter: o.filter,
+		trace:  o.trace,
+		error:  errorLog,
+	}
 
 	// Return a configured logging handler.
-	return &Handler{
-		logger: logger,
-		log:    func(ctx context.Context, msg string, attrs ...slog.Attr) {},
-		error: func(ctx context.Context, msg string, err error) error {
-			return err
-		},
-		// filters:      filters,
-		// filterHandle: filterHandle,
-		option: o,
-	}
+	return handle.init(o)
 }

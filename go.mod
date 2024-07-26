@@ -1,4 +1,4 @@
-module github.com/origadmin/entslog/v2
+module github.com/origadmin/entslog/v3
 
 go 1.22
 

@@ -1,51 +1,62 @@
+// Copyright (c) 2024 OrigAdmin. All rights reserved.
+
+// Package entslog for entgo.io/ent
 package entslog
 
 import (
 	"context"
 	"log/slog"
+	"slices"
 )
 
 type Handler struct {
 	logger *slog.Logger
+	filter FilterAttrs
+	trace  TraceFunc
 	log    func(ctx context.Context, msg string, attrs ...slog.Attr)
 	error  func(ctx context.Context, msg string, err error) error
-	// filters      map[string]struct{}
-	// filterHandle func(ctx context.Context, attrs ...slog.Attr) []slog.Attr
-	option Option
 	attrs  []slog.Attr
 }
 
-func (eh *Handler) initWith(attrs ...slog.Attr) Handler {
-	ehCopy := *eh
-	ehCopy.attrs = attrs
-	ehCopy.log = func(ctx context.Context, msg string, attrs ...slog.Attr) {
-		attrs = eh.Filter(ctx, attrs...)
-		ehCopy.logger.LogAttrs(ctx,
-			eh.option.defaultLevel.Level(), msg,
-			attrs...)
+func (h *Handler) init(o *Option) *Handler {
+	h.log = func(ctx context.Context, msg string, attrs ...slog.Attr) {
+		attrs = h.Filter(ctx, attrs...)
+		h.logger.LogAttrs(ctx, o.level.Level(), msg, attrs...)
 	}
-	if ehCopy.option.handleError {
-		ehCopy.error = func(ctx context.Context, msg string, err error) error {
+	if o.handleError {
+		h.error = func(ctx context.Context, msg string, err error) error {
 			if err != nil {
-				attrs = eh.Filter(ctx, slog.Any("error", err))
-				ehCopy.logger.LogAttrs(ctx,
-					eh.option.errorLevel.Level(), msg,
-					attrs...,
-				)
+				attrs := h.Filter(ctx, slog.Any("error", err))
+				h.logger.LogAttrs(ctx, o.errorLevel.Level(), msg, attrs...)
 			}
 			return err
 		}
 	}
-	return ehCopy
+	return h
 }
 
-func (eh *Handler) with(attrs ...slog.Attr) Handler {
-	ehCopy := *eh
-	ehCopy.attrs = attrs
-	return ehCopy
+func (h *Handler) with(attrs ...slog.Attr) Handler {
+	handlerCopy := *h
+	handlerCopy.attrs = attrs
+	return handlerCopy
 }
 
-func (eh *Handler) Filter(ctx context.Context, attrs ...slog.Attr) []slog.Attr {
-	attrs = eh.option.filter(ctx, attrs...)
-	return append(eh.attrs, attrs...)
+func (h *Handler) WithTrace(ctx context.Context) string {
+	return h.trace(ctx)
+}
+
+func (h *Handler) Filter(ctx context.Context, attrs ...slog.Attr) []slog.Attr {
+	return h.filter(ctx, slices.Concat(h.attrs, attrs)...)
+}
+
+func (h *Handler) Log(ctx context.Context, msg string, attrs ...slog.Attr) {
+	h.log(ctx, msg, attrs...)
+}
+
+func (h *Handler) LogError(ctx context.Context, msg string, err error) error {
+	return h.error(ctx, msg, err)
+}
+
+func errorLog(ctx context.Context, msg string, err error) error {
+	return err
 }
