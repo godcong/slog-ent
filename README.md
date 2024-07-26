@@ -3,7 +3,6 @@
 [![tag](https://img.shields.io/github/tag/godcong/entslog.svg)](https://github.com/godcong/entslog/releases)
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.21-%23007d9c)
 [![GoDoc](https://godoc.org/github.com/godcong/entslog?status.svg)](https://pkg.go.dev/github.com/godcong/entslog)
-![Build Status](https://github.com/godcong/entslog/actions/workflows/test.yml/badge.svg)
 [![Go report](https://goreportcard.com/badge/github.com/godcong/entslog)](https://goreportcard.com/report/github.com/godcong/entslog)
 [![Coverage](https://img.shields.io/codecov/c/github/godcong/entslog)](https://codecov.io/gh/godcong/entslog)
 [![Contributors](https://img.shields.io/github/contributors/godcong/entslog)](https://github.com/godcong/entslog/graphs/contributors)
