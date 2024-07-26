@@ -1,0 +1,8 @@
+[submodule "v2"]
+	path = v2
+	url = https://github.com/origadmin/entslog
+	branch = v2
+[submodule "v3"]
+	path = v3
+	url = https://github.com/origadmin/entslog
+	branch = v3
