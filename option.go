@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/goexts/ggb/settings"
 	"github.com/google/uuid"
 )
 
@@ -24,6 +25,8 @@ type (
 		trace       TraceFunc    // GenerateID is a function to generate unique IDs for log entries.
 		filter      FilterAttrs  // Filters specifies the set of attributes to filter out from logged messages.
 	}
+	// Setting is a type alias for the settings.Setting type.
+	Setting = settings.Setting[Option]
 )
 
 // DefaultOption provides the default configuration options for the logging handler.
@@ -45,25 +48,15 @@ func traceUUID(ctx context.Context) string {
 	return uuid.Must(uuid.NewRandom()).String()
 }
 
-// settings applies the given options to the default logging options and returns the resulting configuration.
-func settings(opts ...func(*Option) *Option) *Option {
-	option := DefaultOption
-	for _, opt := range opts {
-		opt(&option)
-	}
-	return &option
-}
-
 // WithDefaultLevel sets the default log level for the given logging options.
 //
 // - `level`: The log level to be set as the default.
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the default log level,
 // and returns the updated `*Option` pointer.
-func WithDefaultLevel(level slog.Leveler) func(*Option) *Option {
-	return func(option *Option) *Option {
-		option.level = level
-		return option
+func WithDefaultLevel(level slog.Leveler) Setting {
+	return func(o *Option) {
+		o.level = level
 	}
 }
 
@@ -73,11 +66,10 @@ func WithDefaultLevel(level slog.Leveler) func(*Option) *Option {
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the error log level
 // and enabling error handling, then returns the updated `*Option` pointer.
-func WithErrorLevel(level slog.Leveler) func(*Option) *Option {
-	return func(option *Option) *Option {
+func WithErrorLevel(level slog.Leveler) Setting {
+	return func(option *Option) {
 		option.errorLevel = level
 		option.handleError = true
-		return option
 	}
 }
 
@@ -87,10 +79,9 @@ func WithErrorLevel(level slog.Leveler) func(*Option) *Option {
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the error handling flag,
 // and returns the updated `*Option` pointer.
-func WithError() func(*Option) *Option {
-	return func(option *Option) *Option {
+func WithError() Setting {
+	return func(option *Option) {
 		option.handleError = true
-		return option
 	}
 }
 
@@ -100,10 +91,9 @@ func WithError() func(*Option) *Option {
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the list of filtered attributes,
 // and returns the updated `*Option` pointer.
-func WithFilter(filter func(context.Context, ...slog.Attr) []slog.Attr) func(*Option) *Option {
-	return func(option *Option) *Option {
+func WithFilter(filter func(context.Context, ...slog.Attr) []slog.Attr) Setting {
+	return func(option *Option) {
 		option.filter = filter
-		return option
 	}
 }
 
@@ -114,10 +104,9 @@ func WithFilter(filter func(context.Context, ...slog.Attr) []slog.Attr) func(*Op
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the custom ID generation function,
 // and returns the updated `*Option` pointer.
-func WithTrace(trace func(context.Context) string) func(*Option) *Option {
-	return func(option *Option) *Option {
+func WithTrace(trace func(context.Context) string) Setting {
+	return func(option *Option) {
 		option.trace = trace
-		return option
 	}
 }
 
@@ -128,10 +117,9 @@ func WithTrace(trace func(context.Context) string) func(*Option) *Option {
 //
 // Returns a function that accepts an `*Option` parameter, modifies it by setting the logger,
 // and returns the updated `*Option` pointer.
-func WithLogger(logger *slog.Logger) func(*Option) *Option {
-	return func(option *Option) *Option {
+func WithLogger(logger *slog.Logger) Setting {
+	return func(option *Option) {
 		option.logger = logger
-		return option
 	}
 }
 
@@ -143,6 +131,7 @@ func (o *Option) make() *Handler {
 	}
 
 	handle := Handler{
+		logger: o.logger,
 		filter: o.filter,
 		trace:  o.trace,
 		error:  errorLog,

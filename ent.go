@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/goexts/ggb/settings"
 )
 
 // SlogDriver is a init that logs all init operations.
@@ -28,9 +29,9 @@ func (d *SlogDriver) Dialect() string {
 
 // New gets a init and an optional logging function, and returns
 // a new slog-init that prints all outgoing operations.
-func New(dri dialect.Driver, opts ...func(*Option) *Option) dialect.Driver {
-	op := settings(opts...)
-	handle := op.make()
+func New(dri dialect.Driver, ss ...Setting) dialect.Driver {
+	opt := settings.Apply(&DefaultOption, ss)
+	handle := opt.make()
 	return &SlogDriver{dri: dri, Handler: handle.with(slog.String("database", "driver"))}
 }
 
