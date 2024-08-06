@@ -60,3 +60,33 @@ func (h *Handler) LogError(ctx context.Context, msg string, err error) error {
 func errorLog(ctx context.Context, msg string, err error) error {
 	return err
 }
+
+func makeHandle(o *Option) *Handler {
+	// Define a filter function to modify log attributes based on the FilterAttrs option.
+	if o.logger == nil {
+		o.logger = slog.Default()
+	}
+
+	h := Handler{
+		logger: o.logger,
+		filter: o.filter,
+		trace:  o.trace,
+		error:  errorLog,
+	}
+	h.log = func(ctx context.Context, msg string, attrs ...slog.Attr) {
+		attrs = h.Filter(ctx, attrs...)
+		h.logger.LogAttrs(ctx, o.level.Level(), msg, attrs...)
+	}
+	if o.handleError {
+		h.error = func(ctx context.Context, msg string, err error) error {
+			if err != nil {
+				attrs := h.Filter(ctx, slog.Any("error", err))
+				h.logger.LogAttrs(ctx, o.errorLevel.Level(), msg, attrs...)
+			}
+			return err
+		}
+	}
+
+	// Return a configured logging handler.
+	return &h
+}

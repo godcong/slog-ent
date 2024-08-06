@@ -30,8 +30,8 @@ func (d *SlogDriver) Dialect() string {
 // New gets a init and an optional logging function, and returns
 // a new slog-init that prints all outgoing operations.
 func New(dri dialect.Driver, ss ...Setting) dialect.Driver {
-	opt := settings.Apply(&DefaultOption, ss)
-	handle := opt.make()
+	opt := settings.Apply(&defaultOption, ss)
+	handle := makeHandle(opt)
 	return &SlogDriver{dri: dri, Handler: handle.with(slog.String("database", "driver"))}
 }
 

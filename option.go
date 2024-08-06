@@ -29,17 +29,17 @@ type (
 	Setting = settings.Setting[Option]
 )
 
-// DefaultOption provides the default configuration options for the logging handler.
-var DefaultOption = Option{
+// defaultOption provides the default configuration options for the logging handler.
+var defaultOption = Option{
 	logger:      slog.Default(),  // Defaults to the default logger.
 	level:       slog.LevelInfo,  // Defaults to Info level.
 	errorLevel:  slog.LevelError, // Defaults to Error level.
 	handleError: true,            // Defaults to handling errors.
-	filter:      noFilter,        // Defaults to no filtering.
+	filter:      emptyFilter,     // Defaults to no filtering.
 	trace:       traceUUID,       // Uses the package-level trace function to generate log entry IDs by default.
 }
 
-func noFilter(_ context.Context, attrs ...slog.Attr) []slog.Attr {
+func emptyFilter(_ context.Context, attrs ...slog.Attr) []slog.Attr {
 	return attrs
 }
 
@@ -124,19 +124,3 @@ func WithLogger(logger *slog.Logger) Setting {
 }
 
 // make configures and returns a new logging handler based on the provided options.
-func (o *Option) make() *Handler {
-	// Define a filter function to modify log attributes based on the FilterAttrs option.
-	if o.logger == nil {
-		o.logger = slog.Default()
-	}
-
-	handle := Handler{
-		logger: o.logger,
-		filter: o.filter,
-		trace:  o.trace,
-		error:  errorLog,
-	}
-
-	// Return a configured logging handler.
-	return handle.init(o)
-}
