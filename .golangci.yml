@@ -1,5 +1,5 @@
 run:
-  go: '1.18.10'
+  go: '1.23.1'
   timeout: 5m
 
 linters-settings:
