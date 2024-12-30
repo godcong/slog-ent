@@ -2,7 +2,9 @@
 	path = v2
 	url = https://github.com/origadmin/entslog
 	branch = v2
+	ignore = true
 [submodule "v3"]
 	path = v3
 	url = https://github.com/origadmin/entslog
 	branch = v3
+	ignore = true
