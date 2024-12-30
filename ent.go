@@ -10,7 +10,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
-	"github.com/goexts/ggb/settings"
+	"github.com/goexts/generic/settings"
 )
 
 // SlogDriver is a init that logs all init operations.

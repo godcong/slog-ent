@@ -7,7 +7,6 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/goexts/ggb/settings"
 	"github.com/google/uuid"
 )
 
@@ -26,7 +25,7 @@ type (
 		filter      FilterAttrs  // Filters specifies the set of attributes to filter out from logged messages.
 	}
 	// Setting is a type alias for the settings.Setting type.
-	Setting = settings.Setting[Option]
+	Setting = func(*Option)
 )
 
 // defaultOption provides the default configuration options for the logging handler.
